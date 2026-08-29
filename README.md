@@ -1,58 +1,163 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Sistem Internal PT Properindo Enviro Tech
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Aplikasi internal untuk pengelolaan **data karyawan** dan **monitoring pekerjaan**, dibuat sebagai bagian dari tes kompetensi seleksi Staff IT.
 
-## About Laravel
+Dua kebutuhan dari soal (Sistem Informasi Data Karyawan & Sistem Monitoring Pekerjaan Internal) digabung jadi satu aplikasi, karena PIC pada modul monitoring pekerjaan mengacu langsung ke data karyawan yang sama.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Demo
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Link aplikasi:** `(isi setelah deploy ke Railway)`
+- **Kredensial login:** lihat bagian [Kredensial Login](#kredensial-login)
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Tech Stack
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+| Komponen | Teknologi | Alasan |
+|---|---|---|
+| Framework | Laravel 11 | Familiar, ekosistem matang, cocok untuk timeline pengerjaan singkat |
+| Admin Panel | Filament 3 | CRUD, dashboard, filter, dan form builder generate otomatis — mempercepat development tanpa mengorbankan kerapian |
+| Database | MySQL | Sesuai kebutuhan relasi antar tabel (departemen, jabatan, karyawan, pekerjaan) |
+| Histori Perubahan | spatie/laravel-activitylog | Mencatat otomatis setiap create/update/delete pada data karyawan |
+| Export Laporan | pxlrbt/filament-excel | Export data karyawan ke Excel/CSV langsung dari tabel Filament |
+| Notifikasi | Laravel Notification (database) + Scheduler | Notifikasi otomatis saat pekerjaan mendekati/melewati deadline |
+| Environment Lokal | Laragon | Web server, PHP, dan MySQL dalam satu paket untuk development di Windows |
+| Deployment | Railway | Hosting + MySQL + cron job dalam satu platform |
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+---
 
-## Agentic Development
+## Fitur
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Modul 1 — Data Karyawan
+- Login pengguna (bawaan Filament)
+- Dashboard: total karyawan, karyawan aktif, jumlah departemen
+- CRUD Departemen, Jabatan, dan Karyawan
+- Form Karyawan: pilih Jabatan terlebih dahulu, Departemen ter-isi otomatis (read-only) sesuai jabatan yang dipilih
+- Pencarian (nama, kode karyawan) dan filter (departemen, jabatan, status)
+- Export laporan karyawan ke Excel/CSV
+- Riwayat perubahan data (tambah/ubah/hapus) untuk seluruh karyawan dalam satu tampilan, dengan penanda warna per jenis aksi
 
-```bash
-composer require laravel/boost --dev
+### Modul 2 — Monitoring Pekerjaan
+- CRUD data pekerjaan
+- PIC dipilih langsung dari data Karyawan (bukan tabel terpisah)
+- Dashboard: total pekerjaan, sedang proses, terlambat, mendekati deadline (≤ 3 hari)
+- Filter berdasarkan PIC, status, dan rentang deadline
+- Penanda warna baris deadline: merah (terlambat), kuning (mendekati), normal (aman)
+- Notifikasi otomatis (ikon lonceng di panel admin) saat pekerjaan mendekati atau melewati deadline, dijalankan terjadwal setiap hari lewat Laravel Scheduler
 
-php artisan boost:install
+---
+
+## Struktur Database (ERD)
+
+```
+departments                jabatans                    employees
+┌───────────────┐         ┌────────────────────┐      ┌─────────────────────────┐
+│ id         PK │◄───┐    │ id              PK  │◄──┐  │ id                  PK  │
+│ name          │    └────┤ department_id   FK  │   └──┤ jabatan_id          FK  │
+└───────────────┘         │ name                │      │ department_id       FK  │
+                           └─────────────────────┘      │ employee_code           │
+                                                         │ name                    │
+                                                         │ email                   │
+                                                         │ status (aktif/nonaktif) │
+                                                         └───────────┬─────────────┘
+                                                                     │
+                                                                     │ pic_id (FK)
+                                                                     ▼
+                                                         tasks
+                                                         ┌─────────────────────────┐
+                                                         │ id                  PK  │
+                                                         │ task_name               │
+                                                         │ pic_id              FK  │ → employees.id
+                                                         │ deadline (date)         │
+                                                         │ status                  │
+                                                         │ priority                │
+                                                         └─────────────────────────┘
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+**Penjelasan relasi:**
+- Satu **department** memiliki banyak **jabatan** dan banyak **employee**.
+- Satu **jabatan** dimiliki satu **department**, dan memiliki banyak **employee**.
+- Satu **employee** memiliki satu **department** dan satu **jabatan** (department ter-isi otomatis mengikuti jabatan yang dipilih).
+- Satu **employee** bisa menjadi PIC untuk banyak **task**.
+- Perubahan data pada tabel `employees` (create/update/delete) tercatat otomatis ke tabel `activity_log` (package `spatie/laravel-activitylog`).
 
-## Contributing
+---
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Instalasi Lokal
 
-## Code of Conduct
+### Prasyarat
+- [Laragon](https://laragon.org/) (menyediakan PHP, Composer, dan MySQL)
+- Git
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Langkah
 
-## Security Vulnerabilities
+```bash
+# 1. Clone repo
+git clone https://github.com/username/properindo-app.git
+cd properindo-app
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# 2. Install dependency PHP
+composer install
 
-## License
+# 3. Salin file environment
+cp .env.example .env
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# 4. Sesuaikan koneksi database di .env (default Laragon)
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=properindo_karyawan
+# DB_USERNAME=root
+# DB_PASSWORD=
+
+# 5. Buat database kosong bernama "properindo_karyawan" lewat HeidiSQL/phpMyAdmin bawaan Laragon
+
+# 6. Generate application key
+php artisan key:generate
+
+# 7. Jalankan migration + seeder akun admin
+php artisan migrate --seed
+
+# 8. Jalankan server lokal
+php artisan serve
+```
+
+Buka `http://127.0.0.1:8000` di browser — landing page akan tampil dengan tombol menuju halaman login (`/admin`).
+
+### Menjalankan notifikasi deadline secara manual (opsional, untuk testing)
+```bash
+php artisan tasks:check-deadlines
+```
+
+### Menjalankan scheduler (agar notifikasi berjalan otomatis setiap hari)
+```bash
+php artisan schedule:work
+```
+
+---
+
+## Kredensial Login
+
+| Nama | Email | Password |
+|---|---|---|
+| Admin | admin@properindo.test | password123 |
+| Bagus | bagus@properindo.test | password123 |
+
+---
+
+## Catatan Teknis Tambahan
+
+- Ekstensi PHP `intl`, `zip`, dan `gd` dibutuhkan oleh Filament dan package export (dideklarasikan di `composer.json` agar otomatis terpasang saat deploy).
+- `QUEUE_CONNECTION` menggunakan `sync` — proses export dan notifikasi dijalankan langsung tanpa background worker terpisah, karena skala data pada sistem ini masih kecil dan ini menyederhanakan proses deployment.
+- Timezone aplikasi diset ke `Asia/Jakarta` agar jadwal notifikasi (`Schedule::command(...)->dailyAt(...)`) berjalan sesuai waktu Indonesia.
+
+---
+
+## Deployment
+
+Aplikasi di-deploy ke [Railway](https://railway.app) dengan konfigurasi:
+- Service Laravel + service database MySQL dalam satu project
+- Start command: `php artisan migrate --force && php artisan db:seed --class=AdminUserSeeder --force && php artisan serve --host 0.0.0.0 --port $PORT`
+- Cron job terpisah untuk menjalankan `php artisan tasks:check-deadlines` setiap hari
