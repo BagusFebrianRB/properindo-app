@@ -8,7 +8,7 @@ Dua kebutuhan dari soal (Sistem Informasi Data Karyawan & Sistem Monitoring Peke
 
 ## Demo
 
-- **Link aplikasi:** `(isi setelah deploy ke Railway)`
+- **Link aplikasi:** [Kunjungi](https://properindo-app-production.up.railway.app/)
 - **Kredensial login:** lihat bagian [Kredensial Login](#kredensial-login)
 
 ---
