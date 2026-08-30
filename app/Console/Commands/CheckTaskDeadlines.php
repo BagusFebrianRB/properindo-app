@@ -19,10 +19,14 @@ class CheckTaskDeadlines extends Command
      */
     public function handle()
     {
+        $this->info('DB yang dipakai: ' . config('database.connections.mysql.host') . ' / ' . config('database.connections.mysql.database'));
+
         $tasks = Task::where('status', '!=', 'selesai')
             ->whereDate('deadline', '<=', now()->addDays(3))
             ->with('pic')
             ->get();
+
+        $this->info('Jumlah task ditemukan: ' . $tasks->count());
 
         if ($tasks->isEmpty()) {
             $this->info('Tidak ada pekerjaan yang mendekati/melewati deadline.');
@@ -30,18 +34,25 @@ class CheckTaskDeadlines extends Command
         }
 
         $admins = User::all();
+        $this->info('Jumlah user: ' . $admins->count());
 
         foreach ($tasks as $task) {
             $isOverdue = $task->deadline->isPast();
             $label = $isOverdue ? 'TERLAMBAT' : 'MENDEKATI DEADLINE';
 
             foreach ($admins as $admin) {
-                Notification::make()
-                    ->title("{$label}: {$task->task_name}")
-                    ->body("PIC: {$task->pic->name} — Deadline: {$task->deadline->format('d/m/Y')}")
-                    ->color($isOverdue ? 'danger' : 'warning')
-                    ->icon($isOverdue ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-clock')
-                    ->sendToDatabase($admin);
+                try {
+                    Notification::make()
+                        ->title("{$label}: {$task->task_name}")
+                        ->body("PIC: {$task->pic->name} — Deadline: {$task->deadline->format('d/m/Y')}")
+                        ->color($isOverdue ? 'danger' : 'warning')
+                        ->icon($isOverdue ? 'heroicon-o-exclamation-triangle' : 'heroicon-o-clock')
+                        ->sendToDatabase($admin);
+
+                    $this->info("BERHASIL simpan notifikasi untuk user #{$admin->id}");
+                } catch (\Throwable $e) {
+                    $this->error("GAGAL simpan notifikasi: " . $e->getMessage());
+                }
             }
 
             $this->line("Notifikasi terkirim: {$task->task_name} ({$label})");
